@@ -15,7 +15,7 @@
 
 `下载链接 --tmp-dir ./tmp --save-dir Download --save-name 文件名`
 
-如需修改在main,py第25行修改
+如需修改在main,py第35行修改
 
 ## 引用项目
 
