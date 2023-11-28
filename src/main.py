@@ -1,23 +1,20 @@
 import os
-import subprocess
-import tkinter as tk
-from concurrent.futures import ThreadPoolExecutor
-from tkinter import ttk
-
 import openpyxl
+import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from PySide6.QtWidgets import QApplication, QLabel, QComboBox, QPushButton, QVBoxLayout, QWidget, QTextEdit
 
 # 获取当前脚本所在的目录
 script_directory = os.path.dirname(os.path.abspath(__file__))
 
 # Excel的位置
-excelPath = script_directory + "/downTable.xlsx"
+excelPath = os.path.join(script_directory, "downTable.xlsx")
 
 # 设置核心执行程序的位置
-cli_program = script_directory + "\\bin\\N_m3u8DL-RE.exe "
-
+cli_program = os.path.join(script_directory, "bin", "N_m3u8DL-RE.exe ")
 
 # 读取下载列表,列表元素为一个元组{'url'：xxx, 'name': xxx, 'command': xxx}
-def readDownloadList(path, program):
+def read_download_list(path, program):
     empty_file_name = "未命名-"
     # 打开一个Excel文件
     workbook = openpyxl.load_workbook(path)
@@ -47,50 +44,50 @@ def readDownloadList(path, program):
     workbook.close()
     return downloader_list
 
-
 # 自定义并行任务个数，默认为3
-def defTaskCount():
-    window = tk.Tk()
-    # 窗口居中
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
-    box_width = 200
-    box_height = 40
-    offset_left = (screen_width - box_width) / 2
-    offset_top = (screen_height - box_height) / 2
-    window.title("提示")
-    window.geometry("%dx%d+%d+%d" % (200, 40, offset_left, offset_top))
+def def_task_count():
+    app = QApplication([])
+    window = QWidget()
+    window.setWindowTitle("提示")
+
+    # 创建布局
+    layout = QVBoxLayout(window)
 
     # 放置文本提示
-    tk.Label(window, text="并行任务数量").place(x=4, y=6)
+    label = QLabel("并行任务数量")
+    layout.addWidget(label)
+
     # 默认三个任务同时跑
     res = 3
 
     # 不知道为啥要加event参数, 不加跑不通
-    def change(event):
+    def change(value):
         nonlocal res
-        res = cbox.get()
+        res = combo_box.currentText()
 
     # 放置下拉框
-    cbox = ttk.Combobox(window, width=4)
-    cbox.bind('<<ComboboxSelected>>', change)
-    cbox.place(x=90, y=6)
-    # 自定义下载任务数量
-    cbox['value'] = (1, 2, 3, 4, 5)
-    cbox.current(2)
+    combo_box = QComboBox()
+    combo_box.currentIndexChanged.connect(change)
+    combo_box.addItems([str(i) for i in range(1, 33)])
+    combo_box.setCurrentIndex(2)  # 设置默认选择为3
+    layout.addWidget(combo_box)
 
     # 放置按钮
-    tk.Button(window, text='确认', pady=0, relief=tk.GROOVE, command=window.destroy).place(x=150, y=4)
-    window.mainloop()
-    return res
+    button = QPushButton('确认')
+    button.clicked.connect(window.close)
+    layout.addWidget(button)
 
+    # 显示窗口
+    window.show()
+    app.exec_()
+
+    return int(res)
 
 # 将下载任务提交到线程池
-def exeDownload(a_list, count):
+def exe_download(a_list, count):
     pool = ThreadPoolExecutor(max_workers=count, thread_name_prefix="worker_")
     for index, item in enumerate(a_list):
         pool.submit(download, item)
-
 
 # 执行下载操作
 def download(item_list):
@@ -104,10 +101,11 @@ def download(item_list):
     except Exception:
         print(item_list["name"] + " 下载失败！")
 
+# 获取下载列表
+download_list = read_download_list(excelPath, cli_program)
 
-# step1: 获取下载列表
-# step2: 确定并行下载任务数量
-# step3: 提交下载任务
-d_list = readDownloadList(excelPath, cli_program)
-task_count = int(defTaskCount())
-exeDownload(d_list, task_count)
+# 获取并行任务数量
+task_count = def_task_count()
+
+# 提交下载任务到线程池
+exe_download(download_list, task_count)
